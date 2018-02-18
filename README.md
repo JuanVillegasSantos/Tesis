@@ -1,1 +1,1 @@
-# Tesis
+# Protocolo de pruebas estáticas
