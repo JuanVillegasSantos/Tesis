@@ -1,2 +1,2 @@
-# Protocolo de pruebas estáticas
-$\alpha$
+﻿# Protocolo de pruebas estáticas
+Este es un test de push
