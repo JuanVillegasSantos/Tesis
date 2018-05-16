@@ -13,6 +13,7 @@ import scipy.stats
 root = Tk()
 root.filename = filedialog.askdirectory()
 root.withdraw()
+bdw=int(input("Por favor ingrese el ancho de banda para el filtrado de datos: "))
 direc_pwm=os.path.join(root.filename,'*.csv'); path_pwm=[]
 direc_optical=os.path.join(root.filename,'*.lvm'); path_optical=[]
 
@@ -123,6 +124,8 @@ def curvaPotencia(bdw):
     C=np.exp(s[-1]);k=s[-2]
     return w,C*(w**k),C,k
 
+"""PLotting"""
+
 """Plot Raw"""
 th='Thrust (N)'
 to='Torque (NÂ·m)'
@@ -140,11 +143,11 @@ for i in np.arange(l):
     plt.plot(dataTo[0],dataTo[1][:,i],'^',markersize=2,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel(to);plt.title(to)
-
+#plt.savefig('Raw Plotting PWM.jpg')
 
 """PLot Filtrado"""
 
-bdw=200
+
 meanR_th=filtrados(th,bdw)[0];stdR_th=filtrados(th,bdw)[1]
 meanth=filtrados(th,bdw)[2];stdth=filtrados(th,bdw)[3]
 
@@ -158,13 +161,16 @@ axes[0].set_xlabel('RPM');axes[0].set_ylabel(th);axes[0].grid()
 axes[1].errorbar(meanR_to, meanto, yerr=stdto,xerr=stdR_to,fmt='o',markersize=3, ecolor='g', capsize=5,capthick=2)
 axes[1].set_xlabel('RPM');axes[1].set_ylabel(to);axes[1].grid()
 
+#plt.savefig('Filtered plotting PWM.jpg')
+
 """Plot Potencia"""
 C=curvaPotencia(bdw)[2];k=curvaPotencia(bdw)[3]
 plt.figure(4)
 plt.plot(curvaPotencia(bdw)[0],curvaPotencia(bdw)[1])
 plt.plot(meanR_to,meanto*meanR_to,'ro')
-plt.xlabel('RPM');plt.ylabel('Power (W)');plt.title('$P=\omega ^%.3f'%(k));plt.grid()
+plt.xlabel('RPM');plt.ylabel('Power (W)');plt.grid()
 D="{:.3e}".format(C)
-print('P=',D,'(w^%.3f)'%(k))
+plt.title('$P=$'+'{:.3e}'.format(C)+'$\\times \omega^{%.3f}$'%(k)); #plt.savefig('Curva de Potencia PWM.jpg')
+#"""print('P=',D,'(w^%.3f)'%(k))"""
 
 plt.show(block=True)
