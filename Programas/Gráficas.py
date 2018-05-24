@@ -11,8 +11,10 @@ import scipy.stats
 
 """Calling for paths"""
 root = Tk()
-root.filename = filedialog.askdirectory()
+root.filename = filedialog.askdirectory(title = "Select folder with data")
+root.saveData=filedialog.askdirectory(title = "Select folder where you want to store results")
 root.withdraw()
+
 bdw=int(input("Por favor ingrese el ancho de banda para el filtrado de datos: "))
 direc_pwm=os.path.join(root.filename,'*.csv'); path_pwm=[]
 direc_optical=os.path.join(root.filename,'*.lvm'); path_optical=[]
@@ -138,16 +140,16 @@ for i in np.arange(l):
     plt.plot(dataTh[0],dataTh[1][:,i],'^',markersize=1,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel('Thrust [N]'); plt.title(th)
+plt.savefig(os.path.join(root.saveData,'Raw Plotting Thrust vs PWM RPM.jpg'))
 for i in np.arange(l):
     plt.figure(2)
     plt.plot(dataTo[0],dataTo[1][:,i],'^',markersize=2,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel(to);plt.title(to)
-#plt.savefig('Raw Plotting PWM.jpg')
+plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM.jpg'))
+
 
 """PLot Filtrado"""
-
-
 meanR_th=filtrados(th,bdw)[0];stdR_th=filtrados(th,bdw)[1]
 meanth=filtrados(th,bdw)[2];stdth=filtrados(th,bdw)[3]
 
@@ -160,8 +162,7 @@ axes[0].set_xlabel('RPM');axes[0].set_ylabel(th);axes[0].grid()
 
 axes[1].errorbar(meanR_to, meanto, yerr=stdto,xerr=stdR_to,fmt='o',markersize=3, ecolor='g', capsize=5,capthick=2)
 axes[1].set_xlabel('RPM');axes[1].set_ylabel(to);axes[1].grid()
-
-#plt.savefig('Filtered plotting PWM.jpg')
+plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs PWM RPM.jpg'))
 
 """Plot Potencia"""
 C=curvaPotencia(bdw)[2];k=curvaPotencia(bdw)[3]
@@ -172,5 +173,5 @@ plt.xlabel('RPM');plt.ylabel('Power (W)');plt.grid()
 D="{:.3e}".format(C)
 plt.title('$P=$'+'{:.3e}'.format(C)+'$\\times \omega^{%.3f}$'%(k)); #plt.savefig('Curva de Potencia PWM.jpg')
 #"""print('P=',D,'(w^%.3f)'%(k))"""
-
+plt.savefig(os.path.join(root.saveData,'Power vs PWM RPM.jpg'))
 plt.show(block=True)
