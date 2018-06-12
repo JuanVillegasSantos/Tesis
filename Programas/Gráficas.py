@@ -8,6 +8,8 @@ from tkinter import Tk
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
+import datetime
+now=datetime.datetime.now()
 
 """Calling for paths"""
 root = Tk()
@@ -230,7 +232,7 @@ for i in np.arange(l):
     plt.plot(dataTo[0],dataTo[1][:,i],'^',markersize=2,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel(to);plt.title(to)
-plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM.jpg'))
+plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 
 """PLot Filtrado"""
@@ -248,7 +250,7 @@ axes[0].set_xlabel('RPM');axes[0].set_ylabel(th);axes[0].grid(); axes[0].legend(
 axes[1].errorbar(meanR_to, meanto, yerr=stdto,xerr=stdR_to,fmt='o',markersize=3, ecolor='g', capsize=5,capthick=2)
 axes[1].errorbar(RPMoptical_m, meanto, yerr=stdto,xerr=RPMoptical_std,fmt='^',markersize=3, ecolor='r', capsize=5,capthick=2,label='optical')
 axes[1].set_xlabel('RPM');axes[1].set_ylabel(to);axes[1].grid()
-plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM.jpg'))
+plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 """Plot Potencia"""
 C=curvaPotencia(bdw)[2];k=curvaPotencia(bdw)[3]
@@ -260,13 +262,13 @@ plt.xlabel('RPM');plt.ylabel('Power (W)');plt.grid(); plt.legend()
 D="{:.3e}".format(C)
 plt.title('$P=$'+'{:.3e}'.format(C)+'$\\times \omega^{%.3f}$'%(k)); #plt.savefig('Curva de Potencia PWM.jpg')
 #"""print('P=',D,'(w^%.3f)'%(k))"""
-plt.savefig(os.path.join(root.saveData,'Power curve.jpg'))
+plt.savefig(os.path.join(root.saveData,'Power curve'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 """Plot induced"""
 plt.figure(5)
 plt.errorbar(RPMoptical_m, RPMInduced_m, yerr=RPMInduced_std,xerr=RPMoptical_std,fmt='^',markersize=3, ecolor='b', capsize=5,capthick=2)
 plt.xlabel('RPM_Optical');plt.ylabel('Induced Velocity [m/s]');plt.grid()
-plt.savefig(os.path.join(root.saveData,'Induced Velocity'))
+plt.savefig(os.path.join(root.saveData,'Induced Velocity'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 """Plot M"""
 rhom=densidad([R1,R2,R3],[T1,T2,T3],[P1,P2,P3])[0]
@@ -275,5 +277,5 @@ plt.figure(6)
 plt.plot(meanR_th,Mm,'ob', label='PWM')
 plt.plot(RPMoptical_m,Mm,'og', label='Optical')
 plt.xlabel('RPM');plt.ylabel('M');plt.legend();plt.grid()
-plt.savefig(os.path.join(root.saveData,'Figure of Merit'))
+plt.savefig(os.path.join(root.saveData,'Figure of Merit'+ now.strftime("%Y-%m-%d")+'.jpg'))
 plt.show(block=True)

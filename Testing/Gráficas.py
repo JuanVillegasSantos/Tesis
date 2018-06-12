@@ -8,6 +8,8 @@ from tkinter import Tk
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
+import datetime
+now=datetime.datetime.now()
 
 """Calling for paths"""
 root = Tk()
@@ -16,9 +18,12 @@ root.saveData=filedialog.askdirectory(title = "Select folder where you want to s
 root.withdraw()
 
 bdw=int(input("Por favor ingrese el ancho de banda para el filtrado de datos: "))
-T1s,T2s,T3s=input("Ingrese los datos medidos de temperatura (3): ").split(','); T1=float(T1s);T2=float(T2s);T3=float(T3s)
-R1s,R2s,R3s=input("Ingrese los datos medidos de humedad relativa (3): ").split(','); R1=float(R1s);R2=float(R2s);R3=float(R3s)
-P1s,P2s,P3s=input("Ingrese los datos medidos de presión atmosférica (3): ").split(','); P1=float(P1s);P2=float(P2s);P3=float(P3s)
+#T1s,T2s,T3s=input("Ingrese los datos medidos de temperatura (3): ").split(','); T1=float(T1s);T2=float(T2s);T3=float(T3s)
+T1=17.6; T2=17.7; T3=18.1
+#R1s,R2s,R3s=input("Ingrese los datos medidos de humedad relativa (3): ").split(','); R1=float(R1s);R2=float(R2s);R3=float(R3s)
+R1=68.8;R2=68.7; R3=68.8
+#P1s,P2s,P3s=input("Ingrese los datos medidos de presión atmosférica (3): ").split(','); P1=float(P1s);P2=float(P2s);P3=float(P3s)
+P1=746.61; P2=746.62; P3=746.62
 
 direc_pwm=os.path.join(root.filename,'*.csv'); path_pwm=[]
 direc_optical=os.path.join(root.filename,'*.lvm'); path_optical=[]
@@ -144,13 +149,13 @@ def filtrados(fuerza,bandwidth):
 
 """Curva Potencia"""
 def curvaPotencia(bdw):
-    w=filtrados('Torque (NÂ·m)',bdw)[0]
+    w=filtrados('Torque (NÂ·m)',bdw)[0]*(2*np.pi/60)
     T=filtrados('Torque (NÂ·m)',bdw)[2]
     P=T*w
-    x=np.log(w);y=np.log(P)
+    x=np.log(w/(2*np.pi/60));y=np.log(P)
     s=np.polyfit(x,y,1)
     C=np.exp(s[-1]);k=s[-2]
-    return w,C*(w**k),C,k
+    return w,C*((w/(2*np.pi/60))**k),C,k
 
 """Aligning optical velocities"""
 for i in range(1,len(path_optical)):
@@ -230,7 +235,7 @@ for i in np.arange(l):
     plt.plot(dataTo[0],dataTo[1][:,i],'^',markersize=2,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel(to);plt.title(to)
-plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM.jpg'))
+plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 
 """PLot Filtrado"""
@@ -248,25 +253,25 @@ axes[0].set_xlabel('RPM');axes[0].set_ylabel(th);axes[0].grid(); axes[0].legend(
 axes[1].errorbar(meanR_to, meanto, yerr=stdto,xerr=stdR_to,fmt='o',markersize=3, ecolor='g', capsize=5,capthick=2)
 axes[1].errorbar(RPMoptical_m, meanto, yerr=stdto,xerr=RPMoptical_std,fmt='^',markersize=3, ecolor='r', capsize=5,capthick=2,label='optical')
 axes[1].set_xlabel('RPM');axes[1].set_ylabel(to);axes[1].grid()
-plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM.jpg'))
+plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 """Plot Potencia"""
 C=curvaPotencia(bdw)[2];k=curvaPotencia(bdw)[3]
 plt.figure(4)
-plt.plot(curvaPotencia(bdw)[0],curvaPotencia(bdw)[1])
-plt.plot(meanR_to,meanto*meanR_to,'ro', label='pwm')
-plt.plot(RPMoptical_m,meanto*RPMoptical_m,'go',label='optical')
+plt.plot(curvaPotencia(bdw)[0]*60/(2*np.pi),curvaPotencia(bdw)[1])
+plt.plot(meanR_to,meanto*meanR_to*(2*np.pi/60),'ro', label='pwm')
+plt.plot(RPMoptical_m,meanto*RPMoptical_m*(2*np.pi/60),'go',label='optical')
 plt.xlabel('RPM');plt.ylabel('Power (W)');plt.grid(); plt.legend()
 D="{:.3e}".format(C)
 plt.title('$P=$'+'{:.3e}'.format(C)+'$\\times \omega^{%.3f}$'%(k)); #plt.savefig('Curva de Potencia PWM.jpg')
 #"""print('P=',D,'(w^%.3f)'%(k))"""
-plt.savefig(os.path.join(root.saveData,'Power curve.jpg'))
+plt.savefig(os.path.join(root.saveData,'Power curve'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 """Plot induced"""
 plt.figure(5)
 plt.errorbar(RPMoptical_m, RPMInduced_m, yerr=RPMInduced_std,xerr=RPMoptical_std,fmt='^',markersize=3, ecolor='b', capsize=5,capthick=2)
 plt.xlabel('RPM_Optical');plt.ylabel('Induced Velocity [m/s]');plt.grid()
-plt.savefig(os.path.join(root.saveData,'Induced Velocity'))
+plt.savefig(os.path.join(root.saveData,'Induced Velocity'+ now.strftime("%Y-%m-%d")+'.jpg'))
 
 """Plot M"""
 rhom=densidad([R1,R2,R3],[T1,T2,T3],[P1,P2,P3])[0]
@@ -275,5 +280,7 @@ plt.figure(6)
 plt.plot(meanR_th,Mm,'ob', label='PWM')
 plt.plot(RPMoptical_m,Mm,'og', label='Optical')
 plt.xlabel('RPM');plt.ylabel('M');plt.legend();plt.grid()
-plt.savefig(os.path.join(root.saveData,'Figure of Merit'))
+plt.savefig(os.path.join(root.saveData,'Figure of Merit'+ now.strftime("%Y-%m-%d")+'.jpg'))
+plt.figure(7)
+plt.plot(RPMoptical_m,meanth*RPMInduced_m)
 plt.show(block=True)
