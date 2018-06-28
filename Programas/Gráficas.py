@@ -18,9 +18,12 @@ root.saveData=filedialog.askdirectory(title = "Select folder where you want to s
 root.withdraw()
 
 bdw=int(input("Por favor ingrese el ancho de banda para el filtrado de datos: "))
-T1s,T2s,T3s=input("Ingrese los datos medidos de temperatura (3): ").split(','); T1=float(T1s);T2=float(T2s);T3=float(T3s)
-R1s,R2s,R3s=input("Ingrese los datos medidos de humedad relativa (3): ").split(','); R1=float(R1s);R2=float(R2s);R3=float(R3s)
-P1s,P2s,P3s=input("Ingrese los datos medidos de presión atmosférica (3): ").split(','); P1=float(P1s);P2=float(P2s);P3=float(P3s)
+#T1s,T2s,T3s=input("Ingrese los datos medidos de temperatura (3): ").split(','); T1=float(T1s);T2=float(T2s);T3=float(T3s)
+T1=17.6; T2=17.7; T3=18.1
+#R1s,R2s,R3s=input("Ingrese los datos medidos de humedad relativa (3): ").split(','); R1=float(R1s);R2=float(R2s);R3=float(R3s)
+R1=68.8;R2=68.7; R3=68.8
+#P1s,P2s,P3s=input("Ingrese los datos medidos de presión atmosférica (3): ").split(','); P1=float(P1s);P2=float(P2s);P3=float(P3s)
+P1=746.61; P2=746.62; P3=746.62
 
 direc_pwm=os.path.join(root.filename,'*.csv'); path_pwm=[]
 direc_optical=os.path.join(root.filename,'*.lvm'); path_optical=[]
@@ -144,15 +147,6 @@ def filtrados(fuerza,bandwidth):
         meanf=np.append(meanf,mf);stdf=np.append(stdf,df)
     return meanR,stdR,meanf,stdf
 
-"""Curva Potencia"""
-def curvaPotencia(bdw):
-    w=filtrados('Torque (NÂ·m)',bdw)[0]
-    T=filtrados('Torque (NÂ·m)',bdw)[2]
-    P=T*w
-    x=np.log(w);y=np.log(P)
-    s=np.polyfit(x,y,1)
-    C=np.exp(s[-1]);k=s[-2]
-    return w,C*(w**k),C,k
 
 """Aligning optical velocities"""
 for i in range(1,len(path_optical)):
@@ -200,6 +194,16 @@ for i in indices:
     RPMInduced_m=np.append(RPMInduced_m,meanI)
     RPMInduced_std=np.append(RPMInduced_std,stdI)
 
+"""Curva Potencia"""
+def curvaPotencia(w,bdw):
+    T=filtrados('Torque (NÂ·m)',bdw)[2]
+    P=T*w
+    x=np.log(w/(2*np.pi/60));y=np.log(P)
+    s=np.polyfit(x,y,1)
+    C=np.exp(s[-1]);k=s[-2]
+    return w,C*((w/(2*np.pi/60))**k),C,k
+
+
 """Density"""
 def densidad (R,T,P):
     Rm=np.mean(R)/100; Tm=np.mean(T)+273.15; Pm=np.mean(P)*100
@@ -226,13 +230,13 @@ for i in np.arange(l):
     plt.plot(dataTh[0],dataTh[1][:,i],'^',markersize=1,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel('Thrust [N]'); plt.title(th)
-plt.savefig(os.path.join(root.saveData,'Raw Plotting Thrust vs PWM RPM.jpg'))
+plt.savefig(os.path.join(root.saveData,'Raw Plotting Thrust vs PWM RPM ('+ now.strftime("%Y-%m-%d")+').jpg'))
 for i in np.arange(l):
     plt.figure(2)
     plt.plot(dataTo[0],dataTo[1][:,i],'^',markersize=2,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel(to);plt.title(to)
-plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM'+ now.strftime("%Y-%m-%d")+'.jpg'))
+plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 
 """PLot Filtrado"""
@@ -250,32 +254,89 @@ axes[0].set_xlabel('RPM');axes[0].set_ylabel(th);axes[0].grid(); axes[0].legend(
 axes[1].errorbar(meanR_to, meanto, yerr=stdto,xerr=stdR_to,fmt='o',markersize=3, ecolor='g', capsize=5,capthick=2)
 axes[1].errorbar(RPMoptical_m, meanto, yerr=stdto,xerr=RPMoptical_std,fmt='^',markersize=3, ecolor='r', capsize=5,capthick=2,label='optical')
 axes[1].set_xlabel('RPM');axes[1].set_ylabel(to);axes[1].grid()
-plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM'+ now.strftime("%Y-%m-%d")+'.jpg'))
+plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 """Plot Potencia"""
-C=curvaPotencia(bdw)[2];k=curvaPotencia(bdw)[3]
+C_pwm=curvaPotencia(meanR_to*(2*np.pi/60),bdw)[2];k_pwm=curvaPotencia(meanR_to*(2*np.pi/60),bdw)[3]
+C_optical=curvaPotencia(RPMoptical_m*(2*np.pi/60),bdw)[2];k_pwm=curvaPotencia(RPMoptical_m*(2*np.pi/60),bdw)[3]
+omegath_pwm=meanR_th*(2*np.pi/60); omega_optical=RPMoptical_m*(2*np.pi/60)
+omegato_pwm=meanR_to*(2*np.pi/60)
+P_real_pwm=meanto*omegato_pwm
+P_real_optical=meanto*omega_optical
+
 plt.figure(4)
-plt.plot(curvaPotencia(bdw)[0],curvaPotencia(bdw)[1])
-plt.plot(meanR_to,meanto*meanR_to,'ro', label='pwm')
-plt.plot(RPMoptical_m,meanto*RPMoptical_m,'go',label='optical')
+plt.plot(curvaPotencia(omegato_pwm,bdw)[0]*60/(2*np.pi),
+        curvaPotencia(omegato_pwm,bdw)[1],
+        label='$P_{pwm}=$'+'{:.3e}'.format(C_pwm)+'$\\times \omega^{%.3f}$'%(k_pwm))
+plt.plot(meanR_to,P_real_pwm,'ro', label='pwm')
+plt.plot(RPMoptical_m,P_real_optical,'go',label='optical')
 plt.xlabel('RPM');plt.ylabel('Power (W)');plt.grid(); plt.legend()
-D="{:.3e}".format(C)
-plt.title('$P=$'+'{:.3e}'.format(C)+'$\\times \omega^{%.3f}$'%(k)); #plt.savefig('Curva de Potencia PWM.jpg')
+#plt.title('$P=$'+'{:.3e}'.format(C_pwm)+'$\\times \omega^{%.3f}$'%(k_pwm)); #plt.savefig('Curva de Potencia PWM.jpg')
 #"""print('P=',D,'(w^%.3f)'%(k))"""
-plt.savefig(os.path.join(root.saveData,'Power curve'+ now.strftime("%Y-%m-%d")+'.jpg'))
+plt.savefig(os.path.join(root.saveData,'Power curve ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 """Plot induced"""
 plt.figure(5)
 plt.errorbar(RPMoptical_m, RPMInduced_m, yerr=RPMInduced_std,xerr=RPMoptical_std,fmt='^',markersize=3, ecolor='b', capsize=5,capthick=2)
 plt.xlabel('RPM_Optical');plt.ylabel('Induced Velocity [m/s]');plt.grid()
-plt.savefig(os.path.join(root.saveData,'Induced Velocity'+ now.strftime("%Y-%m-%d")+'.jpg'))
+plt.savefig(os.path.join(root.saveData,'Induced Velocity ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 """Plot M"""
+diameter=0.36
+Area=np.pi*diameter**2/4
 rhom=densidad([R1,R2,R3],[T1,T2,T3],[P1,P2,P3])[0]
-Mm=(meanth*RPMInduced_m)/((meanth**1.5)/np.sqrt(2*rhom*(np.pi*(0.3**2)/4)))
+P_induced=meanth*RPMInduced_m
+P_induced_ideal=(meanth**1.5)/np.sqrt(2*rhom*Area)
+Mm_pwm=(P_induced_ideal/P_real_pwm)
+Mm_optical=(P_induced_ideal/P_real_optical)
+#Mm=((meanth**1.5)/np.sqrt(2*rhom*(np.pi*(0.3**2)/4)))/(meanth*RPMInduced_m)
 plt.figure(6)
-plt.plot(meanR_th,Mm,'ob', label='PWM')
-plt.plot(RPMoptical_m,Mm,'og', label='Optical')
+plt.plot(meanR_th,Mm_pwm,'ob', label='PWM')
+plt.plot(RPMoptical_m,Mm_optical,'og', label='Optical')
 plt.xlabel('RPM');plt.ylabel('M');plt.legend();plt.grid()
-plt.savefig(os.path.join(root.saveData,'Figure of Merit'+ now.strftime("%Y-%m-%d")+'.jpg'))
+plt.gca().set_ylim([0.6,1])
+plt.savefig(os.path.join(root.saveData,'Figure of Merit ('+ now.strftime("%Y-%m-%d")+').jpg'))
+print(rhom)
+print(RPMoptical_m)
+
+Ct_pwm=meanth/(rhom*Area*(omegath_pwm*(diameter/2))**2)
+Ct_optical=meanth/(rhom*Area*(omega_optical*(diameter/2))**2)
+Cp_pwm=P_real_pwm/(rhom*Area*(omegath_pwm*(diameter/2))**3)
+Cp_optical=P_real_optical/(rhom*Area*(omega_optical*(diameter/2))**3)
+#Cpd_pwm=((1/Mm)-1)*Ct_pwm**1.5/np.sqrt(2);Cpd_optical=((1/Mm)-1)*Ct_optical**1.5/np.sqrt(2)
+#Cpd_ideal=Ct_pwm**1.5/np.sqrt(2)
+plt.figure(7)
+plt.plot(meanR_th,Ct_pwm,'or', label='PWM')
+plt.plot(RPMoptical_m,Ct_optical,'og',label='Optical')
+plt.xlabel('RPM');plt.ylabel('Thrust coeficient');plt.legend();plt.grid()
+plt.savefig(os.path.join(root.saveData,'Thrust coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(8)
+plt.plot(meanR_th,Cp_pwm,'or', label='PWM')
+plt.plot(RPMoptical_m,Cp_optical,'og',label='Optical')
+#plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
+plt.xlabel('RPM');plt.ylabel('Power coeficient');plt.legend();plt.grid()
+plt.savefig(os.path.join(root.saveData,'Power Coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(9)
+plt.plot(meanR_th,meanth*RPMInduced_m,'or', label='PWM')
+plt.plot(RPMoptical_m,meanth*RPMInduced_m,'og',label='Optical')
+plt.xlabel('RPM');plt.ylabel('Induced Power');plt.legend();plt.grid()
+plt.savefig(os.path.join(root.saveData,'Induced_power ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(10)
+plt.plot(meanR_th,Ct_pwm,'or', label='PWM')
+plt.plot(RPMoptical_m,Ct_optical,'og',label='Optical')
+plt.xlabel('RPM');plt.ylabel('Thrust coeficient');plt.legend();plt.grid()
+plt.gca().set_xlim([4500,6500]); plt.gca().set_ylim([0.01,0.015])
+plt.savefig(os.path.join(root.saveData,'Zoomed Thrust coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(11)
+plt.plot(meanR_th,Cp_pwm,'or', label='PWM')
+plt.plot(RPMoptical_m,Cp_optical,'og',label='Optical')
+#plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
+plt.xlabel('RPM');plt.ylabel('Power coeficient');plt.legend();plt.grid()
+plt.gca().set_xlim([4500,6500])
+plt.savefig(os.path.join(root.saveData,'Zoomed Power Coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
 plt.show(block=True)
