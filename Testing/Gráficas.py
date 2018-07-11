@@ -10,12 +10,15 @@ import matplotlib.pyplot as plt
 import scipy.stats
 import datetime
 now=datetime.datetime.now()
+import warnings
+warnings.simplefilter('ignore', np.RankWarning)
 
 """Calling for paths"""
 root = Tk()
 root.filename = filedialog.askdirectory(title = "Select folder with data")
 root.saveData=filedialog.askdirectory(title = "Select folder where you want to store results")
 root.withdraw()
+
 
 bdw=int(input("Por favor ingrese el ancho de banda para el filtrado de datos: "))
 #T1s,T2s,T3s=input("Ingrese los datos medidos de temperatura (3): ").split(','); T1=float(T1s);T2=float(T2s);T3=float(T3s)
@@ -24,6 +27,7 @@ T1=17.6; T2=17.7; T3=18.1
 R1=68.8;R2=68.7; R3=68.8
 #P1s,P2s,P3s=input("Ingrese los datos medidos de presión atmosférica (3): ").split(','); P1=float(P1s);P2=float(P2s);P3=float(P3s)
 P1=746.61; P2=746.62; P3=746.62
+offth=1.2;offto=0.035
 
 direc_pwm=os.path.join(root.filename,'*.csv'); path_pwm=[]
 direc_optical=os.path.join(root.filename,'*.lvm'); path_optical=[]
@@ -196,7 +200,7 @@ for i in indices:
 
 """Curva Potencia"""
 def curvaPotencia(w,bdw):
-    T=filtrados('Torque (NÂ·m)',bdw)[2]
+    T=filtrados('Torque (NÂ·m)',bdw)[2]+offto
     P=T*w
     x=np.log(w/(2*np.pi/60));y=np.log(P)
     s=np.polyfit(x,y,1)
@@ -227,14 +231,18 @@ Ps=path_pwm
 l=len(Ps)
 
 """Filtered Data"""
+
+
 meanR_th=filtrados(th,bdw)[0];stdR_th=filtrados(th,bdw)[1]
-meanth=filtrados(th,bdw)[2];stdth=filtrados(th,bdw)[3]
+meanth=filtrados(th,bdw)[2]+offth;stdth=filtrados(th,bdw)[3]
 meanR_to=filtrados(to,bdw)[0];stdR_to=filtrados(to,bdw)[1]
-meanto=filtrados(to,bdw)[2];stdto=filtrados(to,bdw)[3]
+meanto=filtrados(to,bdw)[2]+offto;stdto=filtrados(to,bdw)[3]
 
 """Power Data"""
 C_pwm=curvaPotencia(meanR_to*(2*np.pi/60),bdw)[2];k_pwm=curvaPotencia(meanR_to*(2*np.pi/60),bdw)[3]
-C_optical=curvaPotencia(RPMoptical_m*(2*np.pi/60),bdw)[2];k_pwm=curvaPotencia(RPMoptical_m*(2*np.pi/60),bdw)[3]
+C_optical=curvaPotencia(RPMoptical_m*(2*np.pi/60),bdw)[2]
+#;k_optical=curvaPotencia(RPMoptical_m*(2*np.pi/60),bdw)[3]
+#k_pwm=2.0875
 
 omegath_pwm=meanR_th*(2*np.pi/60); err_omegath_pwm=stdR_th*(2*np.pi/60)
 omegato_pwm=meanR_to*(2*np.pi/60); err_omegato_pwm=stdR_to*(2*np.pi/60)
@@ -269,18 +277,27 @@ Ct_optical=meanth/(rhom*Area*(omega_optical*(diameter/2))**2)
 """Power Coeficient Data"""
 Cp_pwm=P_real_pwm/(rhom*Area*(omegath_pwm*(diameter/2))**3)
 Cp_optical=P_real_optical/(rhom*Area*(omega_optical*(diameter/2))**3)
+
+"""Efficiency data"""
+Volt=15
+current=[0.03,1.19,1.57,1.87,2.35,3.27,4.15,5.68,7.5,8.38,9.49,12.67,14.97]
+
+P_elec=[Volt*i for i in current]
+eff_pwm=P_real_pwm/P_elec
+eff_optical=P_real_optical/P_elec
+
 """PLotting"""
 
 """Plot Raw"""
 for i in np.arange(l):
     plt.figure(1)
-    plt.plot(dataTh[0],dataTh[1][:,i],'^',markersize=1,label=Ps[i])
+    plt.plot(dataTh[0],dataTh[1][:,i]+offth,'^',markersize=1,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel('Thrust [N]'); plt.title(th)
 plt.savefig(os.path.join(root.saveData,'Raw Plotting Thrust vs PWM RPM ('+ now.strftime("%Y-%m-%d")+').jpg'))
 for i in np.arange(l):
     plt.figure(2)
-    plt.plot(dataTo[0],dataTo[1][:,i],'^',markersize=2,label=Ps[i])
+    plt.plot(dataTo[0],dataTo[1][:,i]+offto,'^',markersize=2,label=Ps[i])
     plt.legend(loc='lower right', bbox_to_anchor=(1, -0.5))
     plt.xlabel('Velocidad [RPM]');plt.ylabel(to);plt.title(to)
 plt.savefig(os.path.join(root.saveData,'Raw Plotting Torque vs PWM RPM ('+ now.strftime("%Y-%m-%d")+').jpg'))
@@ -301,7 +318,7 @@ plt.savefig(os.path.join(root.saveData,'Filtered Torque and Thrust vs RPM ('+ no
 plt.figure(4)
 plt.plot(curvaPotencia(omegato_pwm,bdw)[0]*60/(2*np.pi),
         curvaPotencia(omegato_pwm,bdw)[1],
-        label='$P_{pwm}=$'+'{:.3e}'.format(C_pwm)+'$\\times \omega^{3.025}$')
+        label='$P_{pwm}=$'+'{:.3e}'.format(C_pwm)+'$\\times \omega^{%.3f}$'%k_pwm)
 #PWM
 plt.errorbar(meanR_to,P_real_pwm,yerr=err_P_real_pwm,xerr=stdR_to,fmt='og', label='pwm')
 #Optical
@@ -326,7 +343,7 @@ plt.plot(meanR_th,Mm_pwm,'og', label='PWM')
 #Optical
 plt.plot(RPMoptical_m,Mm_optical,'or', label='Optical')
 plt.xlabel('RPM');plt.ylabel('M');plt.legend();plt.grid()
-plt.gca().set_ylim([0.6,1])
+plt.gca().set_xlim([1500,6500]);plt.gca().set_ylim([0.48,0.7])
 plt.savefig(os.path.join(root.saveData,'Figure of Merit ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 """Plot Thrust Coeficient"""
@@ -355,7 +372,7 @@ plt.figure(10)
 plt.plot(meanR_th,Ct_pwm,'og', label='PWM')
 plt.plot(RPMoptical_m,Ct_optical,'or',label='Optical')
 plt.xlabel('RPM');plt.ylabel('Thrust coeficient');plt.legend();plt.grid()
-plt.gca().set_xlim([4500,6500]); plt.gca().set_ylim([0.01,0.015])
+plt.gca().set_xlim([1600,6500]); plt.gca().set_ylim([0.008,0.02])
 plt.savefig(os.path.join(root.saveData,'Zoomed Thrust coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 plt.figure(11)
@@ -363,7 +380,7 @@ plt.plot(meanR_th,Cp_pwm,'og', label='PWM')
 plt.plot(RPMoptical_m,Cp_optical,'or',label='Optical')
 #plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
 plt.xlabel('RPM');plt.ylabel('Power coeficient');plt.legend();plt.grid()
-plt.gca().set_xlim([4500,6500])
+plt.gca().set_xlim([1500,6500]); plt.gca().set_ylim([0.001,0.003])
 plt.savefig(os.path.join(root.saveData,'Zoomed Power Coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 vi_ideal=np.sqrt(meanth/(2*rhom*Area))
@@ -379,7 +396,32 @@ plt.plot(RPMoptical_m,Cp_optical_mod_ideal,'or',label='Optical')
 plt.title('Cp modificado')
 #plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
 plt.xlabel('RPM');plt.ylabel('Power coeficient modified');plt.legend();plt.grid()
-plt.savefig(os.path.join(root.saveData,'Power Coeficient ('+ now.strftime("%Y-%m-%d")+').jpg'))
+plt.savefig(os.path.join(root.saveData,'Power Coeficient modified ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(13)
+plt.plot(meanR_th,eff_pwm,'og', label='PWM')
+plt.plot(RPMoptical_m,eff_optical,'or',label='Optical')
+plt.title('eficiencia global')
+plt.gca().set_xlim([1000,6500]); plt.gca().set_ylim([0.2,1])
+#plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
+plt.xlabel('RPM');plt.ylabel('eficiencia');plt.legend();plt.grid()
+plt.savefig(os.path.join(root.saveData,'Eficiencia ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(14)
+plt.plot(meanR_th,current,'og', label='PWM')
+plt.plot(RPMoptical_m,current,'or',label='Optical')
+plt.title('Corriente')
+#plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
+plt.xlabel('RPM');plt.ylabel('Current (A)');plt.legend();plt.grid()
+plt.savefig(os.path.join(root.saveData,'Current ('+ now.strftime("%Y-%m-%d")+').jpg'))
+
+plt.figure(15)
+plt.plot(meanR_th,P_elec,'og', label='PWM')
+plt.plot(RPMoptical_m,P_elec,'or',label='Optical')
+plt.title('Potencia electrica')
+#plt.plot(RPMoptical_m,Cpd_ideal,'-b',label='model')
+plt.xlabel('RPM');plt.ylabel('Power (W)');plt.legend();plt.grid()
+plt.savefig(os.path.join(root.saveData,'Electrical ('+ now.strftime("%Y-%m-%d")+').jpg'))
 
 print('errors Thrust')
 print(stdth)
@@ -400,11 +442,16 @@ resulting_data = {'RPM_pwm':meanR_th , 'omega_pwm(rad/s)': omegath_pwm,'Error_RP
                 'Thrust (N)':meanth, 'Error_Thrust':stdth,
                 'Torque(Nm)':meanto, 'Error_Torque':stdto,
                 'Potencia_PWM (W)':P_real_pwm,'Error_Potencia_PWM':err_P_real_pwm,
+                'Potencia_optica (W)':P_real_optical, 'Error_Potencia_optica': err_P_real_optical,
                 'Velocidad_inducida (m/s)':RPMInduced_m, 'Error_Velocidad_inducida':RPMInduced_std,
                 'Merito_PWM':Mm_pwm,'Merito_optica':Mm_optical,
                 'Ct_pwm':Ct_pwm,'Ct_optico':Ct_optical,
                 'Cp_pwm':Cp_pwm, 'Cp_optico':Cp_optical,
-                'Cp_modificado_pwm':Cp_pwm_mod_ideal, 'Cp_modificado_optico':Cp_optical_mod_ideal}
+                'Cp_modificado_pwm':Cp_pwm_mod_ideal, 'Cp_modificado_optico':Cp_optical_mod_ideal,
+                'Corriente(A)':current,'Potencia eléctrica (W)':P_elec,'Eficiencia_PWM':eff_pwm,
+                'Eficiencia_optica':eff_optical}
 dataResume=pd.DataFrame(data=resulting_data)
 dataResume.to_csv(os.path.join(root.saveData,'Datos ('+ now.strftime("%Y-%m-%d")+').csv'))
+print(root.filename)
+print(k_pwm)
 plt.show(block=True)
